@@ -1,0 +1,11 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "F5 Anything: My Custom Command",
+            "type": "f5anything",
+            "request": "launch",
+            "command": "echo Put your command here",
+        }
+    ]
+}

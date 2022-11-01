@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "xcode",
+            "type": "f5anything",
+            "request": "launch",
+            "command": "open -a RunXcode.app"
+        }
+    ]
+}

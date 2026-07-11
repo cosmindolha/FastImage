@@ -8,5 +8,23 @@
    Copyright (c) 2022 ___ORGANIZATIONNAME___. All rights reserved.
 -->
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Images</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.camera-raw-image</string>
+				<string>com.sony.arw-raw-image</string>
+			</array>
+		</dict>
+	</array>
+</dict>
 </plist>

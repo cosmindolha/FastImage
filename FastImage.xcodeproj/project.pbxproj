@@ -11,7 +11,6 @@
 		4C3582232903D5DB00A14CCD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C3582222903D5DB00A14CCD /* ContentView.swift */; };
 		4C3582252903D5DC00A14CCD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4C3582242903D5DC00A14CCD /* Assets.xcassets */; };
 		4C3582282903D5DC00A14CCD /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4C3582272903D5DC00A14CCD /* Preview Assets.xcassets */; };
-		4CF865182907DA2900F9B0A9 /* info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4CF865172907DA2900F9B0A9 /* info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -130,7 +129,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4CF865182907DA2900F9B0A9 /* info.plist in Resources */,
 				4C3582282903D5DC00A14CCD /* Preview Assets.xcassets in Resources */,
 				4C3582252903D5DC00A14CCD /* Assets.xcassets in Resources */,
 			);
@@ -275,10 +273,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FastImage/Preview Content\"";
 				DEVELOPMENT_TEAM = BQ5YM2Y7H9;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FastImage/Info.plist;
+				INFOPLIST_FILE = FastImage/info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Fast Image";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -305,10 +303,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FastImage/Preview Content\"";
 				DEVELOPMENT_TEAM = BQ5YM2Y7H9;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FastImage/Info.plist;
+				INFOPLIST_FILE = FastImage/info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Fast Image";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";

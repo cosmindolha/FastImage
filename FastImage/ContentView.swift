@@ -181,7 +181,7 @@ struct ContentView: View, DropDelegate {
     @State private var sliderValue: CGFloat = 0
     @State private var geometrySize: CGSize = .zero
     @State private var imageOffset: CGSize = .zero
-    @State private var dragOriginOffset: CGSize = .zero
+    @GestureState private var dragTranslation: CGSize = .zero
     @State private var handModeEnabled = true
 
     var body: some View {
@@ -204,18 +204,21 @@ struct ContentView: View, DropDelegate {
                                 resetView(to: geometry.size)
                             }
                             .gesture(
-                                DragGesture()
-                                    .onChanged { value in
+                                DragGesture(coordinateSpace: .named("imageCanvas"))
+                                    .updating($dragTranslation) { value, translation, _ in
+                                        translation = value.translation
+                                    }
+                                    .onEnded { value in
                                         imageOffset = CGSize(
-                                            width: dragOriginOffset.width + value.translation.width,
-                                            height: dragOriginOffset.height + value.translation.height
+                                            width: imageOffset.width + value.translation.width,
+                                            height: imageOffset.height + value.translation.height
                                         )
                                     }
-                                    .onEnded { _ in
-                                        dragOriginOffset = imageOffset
-                                    }
                             )
-                            .offset(imageOffset)
+                            .offset(
+                                x: imageOffset.width + dragTranslation.width,
+                                y: imageOffset.height + dragTranslation.height
+                            )
                     }
 
                     if !handModeEnabled {
@@ -226,6 +229,7 @@ struct ContentView: View, DropDelegate {
                         .foregroundStyle(.secondary)
                 }
             }
+            .coordinateSpace(name: "imageCanvas")
             .onAppear {
                 geometrySize = geometry.size
                 currentScreenSize = geometry.size
@@ -335,7 +339,6 @@ struct ContentView: View, DropDelegate {
         currentScreenSize = size
         sliderValue = 0
         imageOffset = .zero
-        dragOriginOffset = .zero
     }
 
     func performDrop(info: DropInfo) -> Bool {

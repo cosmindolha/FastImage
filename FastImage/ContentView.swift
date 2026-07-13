@@ -60,6 +60,8 @@ final class ImageLoader: ObservableObject {
     @Published private(set) var hasUnsavedChanges = false
     @Published private(set) var isSaving = false
     @Published private(set) var saveErrorMessage: String?
+    @Published private(set) var canUndo = false
+    @Published private(set) var canRedo = false
 
     private let decodeQueue = DispatchQueue(label: "com.cosmindolha.FastImage.decode", qos: .userInitiated)
     private let requestLock = NSLock()
@@ -69,6 +71,13 @@ final class ImageLoader: ObservableObject {
     private var cacheOrder: [URL] = []
     private let cacheCountLimit = 3
     private var displayedURL: URL?
+    private var editingSourceImage: NSImage?
+    private var editingSourceCGImage: CGImage?
+    private var currentSourceCrop = CGRect(x: 0, y: 0, width: 1, height: 1)
+    private var savedSourceCrop = CGRect(x: 0, y: 0, width: 1, height: 1)
+    private var undoCropRects: [CGRect] = []
+    private var redoCropRects: [CGRect] = []
+    private let historyLimit = 100
 
     func load(_ url: URL) {
         let generation = beginRequest()
@@ -76,11 +85,14 @@ final class ImageLoader: ObservableObject {
         failedFilename = nil
         hasUnsavedChanges = false
         saveErrorMessage = nil
+        resetEditingSession(with: nil)
 
         if let cachedImage = cachedImage(for: url) {
             image = cachedImage
+            resetEditingSession(with: cachedImage)
             return
         }
+        image = nil
 
         decodeQueue.async { [weak self] in
             guard let self, self.isCurrent(generation) else { return }
@@ -97,6 +109,7 @@ final class ImageLoader: ObservableObject {
                 guard let self, self.isCurrent(generation) else { return }
                 self.image = decodedImage
                 self.failedFilename = decodedImage == nil ? url.lastPathComponent : nil
+                self.resetEditingSession(with: decodedImage)
             }
         }
     }
@@ -108,6 +121,7 @@ final class ImageLoader: ObservableObject {
         failedFilename = nil
         hasUnsavedChanges = false
         saveErrorMessage = nil
+        resetEditingSession(with: droppedImage)
     }
 
     func reportUnsupported(_ url: URL) {
@@ -117,42 +131,80 @@ final class ImageLoader: ObservableObject {
         failedFilename = url.lastPathComponent
         hasUnsavedChanges = false
         saveErrorMessage = nil
+        resetEditingSession(with: nil)
     }
 
     @discardableResult
     func crop(to normalizedRect: CGRect) -> Bool {
-        guard let image,
-              let cgImage = Self.cgImage(from: image) else {
+        guard !isSaving,
+              let sourceImage = editingSourceImage ?? image else {
             return false
         }
 
         let rect = normalizedRect.standardized.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
         guard rect.width > 0, rect.height > 0 else { return false }
 
-        let minX = max(0, floor(rect.minX * CGFloat(cgImage.width)))
-        let minY = max(0, floor(rect.minY * CGFloat(cgImage.height)))
-        let maxX = min(CGFloat(cgImage.width), ceil(rect.maxX * CGFloat(cgImage.width)))
-        let maxY = min(CGFloat(cgImage.height), ceil(rect.maxY * CGFloat(cgImage.height)))
-        let pixelRect = CGRect(
-            x: minX,
-            y: minY,
-            width: maxX - minX,
-            height: maxY - minY
-        )
+        if editingSourceImage == nil {
+            editingSourceImage = sourceImage
+        }
+        if editingSourceCGImage == nil {
+            editingSourceCGImage = Self.cgImage(from: sourceImage)
+        }
+        guard let sourceCGImage = editingSourceCGImage else { return false }
 
-        guard pixelRect.width >= 1,
-              pixelRect.height >= 1,
-              let croppedImage = cgImage.cropping(to: pixelRect) else {
+        let sourceCrop = CGRect(
+            x: currentSourceCrop.minX + rect.minX * currentSourceCrop.width,
+            y: currentSourceCrop.minY + rect.minY * currentSourceCrop.height,
+            width: rect.width * currentSourceCrop.width,
+            height: rect.height * currentSourceCrop.height
+        )
+        guard sourceCrop != currentSourceCrop,
+              let croppedImage = Self.crop(sourceCGImage, to: sourceCrop) else {
             return false
         }
 
-        self.image = NSImage(
-            cgImage: croppedImage,
-            size: NSSize(width: croppedImage.width, height: croppedImage.height)
-        )
-        hasUnsavedChanges = true
+        undoCropRects.append(currentSourceCrop)
+        if undoCropRects.count > historyLimit {
+            undoCropRects.removeFirst(undoCropRects.count - historyLimit)
+        }
+        redoCropRects.removeAll()
+        currentSourceCrop = sourceCrop
+        image = Self.image(from: croppedImage)
         saveErrorMessage = nil
+        updateEditingState()
         return true
+    }
+
+    func undo() {
+        guard !isSaving,
+              let previousCrop = undoCropRects.last,
+              let sourceCGImage = editingSourceCGImage,
+              let restoredImage = Self.crop(sourceCGImage, to: previousCrop) else {
+            return
+        }
+
+        undoCropRects.removeLast()
+        redoCropRects.append(currentSourceCrop)
+        currentSourceCrop = previousCrop
+        image = Self.image(from: restoredImage)
+        saveErrorMessage = nil
+        updateEditingState()
+    }
+
+    func redo() {
+        guard !isSaving,
+              let nextCrop = redoCropRects.last,
+              let sourceCGImage = editingSourceCGImage,
+              let restoredImage = Self.crop(sourceCGImage, to: nextCrop) else {
+            return
+        }
+
+        redoCropRects.removeLast()
+        undoCropRects.append(currentSourceCrop)
+        currentSourceCrop = nextCrop
+        image = Self.image(from: restoredImage)
+        saveErrorMessage = nil
+        updateEditingState()
     }
 
     func save(to url: URL) {
@@ -166,6 +218,7 @@ final class ImageLoader: ObservableObject {
 
         isSaving = true
         saveErrorMessage = nil
+        let sourceCropAtSave = currentSourceCrop
 
         decodeQueue.async { [weak self] in
             let didSave = Self.write(cgImage, to: url)
@@ -177,7 +230,8 @@ final class ImageLoader: ObservableObject {
                 if didSave {
                     self.storeInCache(image, for: url)
                     if self.displayedURL == url, self.image === image {
-                        self.hasUnsavedChanges = false
+                        self.savedSourceCrop = sourceCropAtSave
+                        self.updateEditingState()
                     }
                 } else if self.displayedURL == url {
                     self.saveErrorMessage = "Couldn’t overwrite \(url.lastPathComponent)"
@@ -191,6 +245,22 @@ final class ImageLoader: ObservableObject {
         defer { requestLock.unlock() }
         requestGeneration += 1
         return requestGeneration
+    }
+
+    private func resetEditingSession(with sourceImage: NSImage?) {
+        editingSourceImage = sourceImage
+        editingSourceCGImage = nil
+        currentSourceCrop = CGRect(x: 0, y: 0, width: 1, height: 1)
+        savedSourceCrop = currentSourceCrop
+        undoCropRects.removeAll()
+        redoCropRects.removeAll()
+        updateEditingState()
+    }
+
+    private func updateEditingState() {
+        canUndo = !undoCropRects.isEmpty
+        canRedo = !redoCropRects.isEmpty
+        hasUnsavedChanges = currentSourceCrop != savedSourceCrop
     }
 
     private func isCurrent(_ generation: Int) -> Bool {
@@ -266,6 +336,32 @@ final class ImageLoader: ObservableObject {
     private static func cgImage(from image: NSImage) -> CGImage? {
         var proposedRect = CGRect(origin: .zero, size: image.size)
         return image.cgImage(forProposedRect: &proposedRect, context: nil, hints: nil)
+    }
+
+    private static func crop(_ image: CGImage, to normalizedRect: CGRect) -> CGImage? {
+        let rect = normalizedRect.standardized.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+        guard rect.width > 0, rect.height > 0 else { return nil }
+
+        let minX = max(0, floor(rect.minX * CGFloat(image.width)))
+        let minY = max(0, floor(rect.minY * CGFloat(image.height)))
+        let maxX = min(CGFloat(image.width), ceil(rect.maxX * CGFloat(image.width)))
+        let maxY = min(CGFloat(image.height), ceil(rect.maxY * CGFloat(image.height)))
+        let pixelRect = CGRect(
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        )
+
+        guard pixelRect.width >= 1, pixelRect.height >= 1 else { return nil }
+        return image.cropping(to: pixelRect)
+    }
+
+    private static func image(from cgImage: CGImage) -> NSImage {
+        NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: cgImage.width, height: cgImage.height)
+        )
     }
 
     private static func write(_ image: CGImage, to url: URL) -> Bool {
@@ -430,6 +526,22 @@ struct ContentView: View, DropDelegate {
                 }
 
                 ToolbarItem(placement: .primaryAction) {
+                    Button(action: undoEdit) {
+                        Image(systemName: "arrow.uturn.backward")
+                    }
+                    .help("Undo (Command-Z)")
+                    .disabled(!imageLoader.canUndo || imageLoader.isSaving)
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: redoEdit) {
+                        Image(systemName: "arrow.uturn.forward")
+                    }
+                    .help("Redo (Shift-Command-Z)")
+                    .disabled(!imageLoader.canRedo || imageLoader.isSaving)
+                }
+
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: toggleCrop) {
                         Image(systemName: "crop")
                     }
@@ -467,6 +579,12 @@ struct ContentView: View, DropDelegate {
         }
         .onReceive(NotificationCenter.default.publisher(for: .fastImageSave)) { _ in
             saveCurrentImage()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fastImageUndo)) { _ in
+            undoEdit()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fastImageRedo)) { _ in
+            redoEdit()
         }
         .onReceive(NotificationCenter.default.publisher(for: .fastImageToggleCrop)) { _ in
             toggleCrop()
@@ -562,6 +680,20 @@ struct ContentView: View, DropDelegate {
         } else {
             beginCrop()
         }
+    }
+
+    private func undoEdit() {
+        guard imageLoader.canUndo, !imageLoader.isSaving else { return }
+        isCropping = false
+        imageLoader.undo()
+        resetView(to: geometrySize)
+    }
+
+    private func redoEdit() {
+        guard imageLoader.canRedo, !imageLoader.isSaving else { return }
+        isCropping = false
+        imageLoader.redo()
+        resetView(to: geometrySize)
     }
 
     private func beginCrop() {

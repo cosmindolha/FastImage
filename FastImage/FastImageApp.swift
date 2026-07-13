@@ -9,6 +9,8 @@ import SwiftUI
 
 extension Notification.Name {
     static let fastImageSave = Notification.Name("FastImage.save")
+    static let fastImageUndo = Notification.Name("FastImage.undo")
+    static let fastImageRedo = Notification.Name("FastImage.redo")
     static let fastImageToggleCrop = Notification.Name("FastImage.toggleCrop")
     static let fastImageApplyCrop = Notification.Name("FastImage.applyCrop")
     static let fastImageCancelCrop = Notification.Name("FastImage.cancelCrop")
@@ -16,6 +18,18 @@ extension Notification.Name {
 
 private struct FastImageCommands: Commands {
     var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {
+            Button("Undo") {
+                NotificationCenter.default.post(name: .fastImageUndo, object: nil)
+            }
+            .keyboardShortcut("z", modifiers: .command)
+
+            Button("Redo") {
+                NotificationCenter.default.post(name: .fastImageRedo, object: nil)
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
+
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
                 NotificationCenter.default.post(name: .fastImageSave, object: nil)

@@ -12,6 +12,7 @@ FastImage is a tiny native SwiftUI image viewer for macOS. It opens images quick
 - Browse every supported image in the current folder with the left and right arrow keys
 - Point-anchored mouse-wheel zoom, direct mouse dragging, and double-click fit-to-window
 - Lightweight JPEG/PNG crop tool with draggable edge/corner handles and rule-of-thirds guides
+- Memory-efficient crop undo/redo reconstructed from the original image
 - One-command JPEG/PNG overwrite save
 - Background image decoding and folder scanning keep the interface responsive
 - Strict three-image cache keeps navigation fast without letting memory usage drift upward
@@ -28,6 +29,8 @@ Press `K` to enter crop mode. Drag any edge or corner handle, drag inside the se
 
 For JPEG and PNG files, the toolbar save button and `Command-S` atomically overwrite the original without a confirmation dialog. Other formats remain view-only.
 
+Undo and redo keep only crop geometry plus the original source image, rather than retaining a full-resolution raster for every history step. Undo remains available after saving, so an overwritten crop can still be restored and saved back during the same editing session.
+
 ## Controls
 
 - `Left Arrow` / `Right Arrow`: previous or next image
@@ -37,6 +40,8 @@ For JPEG and PNG files, the toolbar save button and `Command-S` atomically overw
 - `K`: enter or cancel crop mode
 - `Enter`: apply the crop
 - `Esc`: cancel the crop
+- `Command-Z`: undo the last applied crop
+- `Shift-Command-Z`: redo the crop
 - `Command-S`: overwrite the original image with applied edits
 
 ## Requirements

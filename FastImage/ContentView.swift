@@ -6,6 +6,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 private enum ImageSupport {
+    private static let editableExtensions: Set<String> = ["jpg", "jpeg", "png"]
     private static let writableTypeIdentifiers = Set(
         CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []
     )
@@ -23,7 +24,7 @@ private enum ImageSupport {
     }
 
     static func canWrite(_ url: URL) -> Bool {
-        guard !isCameraRaw(url),
+        guard editableExtensions.contains(url.pathExtension.lowercased()),
               let type = UTType(filenameExtension: url.pathExtension) else {
             return false
         }

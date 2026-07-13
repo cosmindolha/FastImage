@@ -11,8 +11,8 @@ FastImage is a tiny native SwiftUI image viewer for macOS. It opens images quick
 - Open from Finder or drag and drop into the window
 - Browse every supported image in the current folder with the left and right arrow keys
 - Point-anchored mouse-wheel zoom, direct mouse dragging, and double-click fit-to-window
-- Lightweight crop tool with draggable edge/corner handles and rule-of-thirds guides
-- One-command overwrite save for writable image formats
+- Lightweight JPEG/PNG crop tool with draggable edge/corner handles and rule-of-thirds guides
+- One-command JPEG/PNG overwrite save
 - Background image decoding and folder scanning keep the interface responsive
 - Strict three-image cache keeps navigation fast without letting memory usage drift upward
 
@@ -20,13 +20,13 @@ FastImage is a tiny native SwiftUI image viewer for macOS. It opens images quick
 
 Sony `.arw` files are decoded with Apple's built-in ImageIO framework. FastImage uses the camera's embedded preview when available, so a large RAW file opens quickly without bundling a heavyweight RAW library or performing a full-resolution demosaic just to fit the image on screen.
 
-This is intentionally a fast viewing path, not a RAW development or editing pipeline. Sony RAW files are read-only in FastImage; replacing an `.arw` with its embedded preview would destroy the original RAW data.
+This is intentionally a fast viewing path, not a RAW development or editing pipeline. Sony RAW files and formats other than JPEG/PNG are view-only in FastImage.
 
 ## Crop and save
 
 Press `K` to enter crop mode. Drag any edge or corner handle, drag inside the selection to move it, or drag outside it to draw a new selection. Press `Enter` to apply the crop or `Esc` to cancel it.
 
-The toolbar save button and `Command-S` atomically overwrite the original writable image without a confirmation dialog. The edited image is encoded in its original file format.
+For JPEG and PNG files, the toolbar save button and `Command-S` atomically overwrite the original without a confirmation dialog. Other formats remain view-only.
 
 ## Controls
 

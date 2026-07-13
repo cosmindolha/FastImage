@@ -5,7 +5,14 @@
 //  Created by Cosmin Dolha on 22.10.2022.
 //
 
+import AppKit
 import SwiftUI
+
+private final class FastImageAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+}
 
 extension Notification.Name {
     static let fastImageSave = Notification.Name("FastImage.save")
@@ -61,6 +68,8 @@ private struct FastImageCommands: Commands {
 
 @main
 struct FastImageApp: App {
+    @NSApplicationDelegateAdaptor(FastImageAppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView().preferredColorScheme(.dark)
@@ -69,7 +78,12 @@ struct FastImageApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
-            CommandGroup(replacing: .newItem, addition: { })
+            CommandGroup(replacing: .newItem) {
+                Button("Close") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .keyboardShortcut("w", modifiers: .command)
+            }
             FastImageCommands()
         }
         .handlesExternalEvents(matching: Set(arrayLiteral: "*"))
